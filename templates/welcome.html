@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Cost Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="welcome-body">
+
+    <nav class="welcome-nav">
+        <a class="brand" href="/">
+            <span class="brand-icon">☁</span>
+            Cloud Cost Monitor
+        </a>
+        <a href="/login" class="nav-login">Sign In</a>
+    </nav>
+
+    <main class="hero">
+        <section class="hero-content">
+            <span class="eyebrow">SMART CLOUD COST MANAGEMENT</span>
+
+            <h1>
+                Monitor Your Cloud Costs.
+                <span>Optimise Your Budget.</span>
+            </h1>
+
+            <p class="hero-description">
+                Track estimated cloud expenses, understand service-wise costs,
+                plan your budget and discover opportunities to optimise spending.
+            </p>
+
+            <a href="/login" class="primary-btn get-started">
+                Get Started <span>→</span>
+            </a>
+
+            <div class="hero-points">
+                <span>✓ Cost Monitoring</span>
+                <span>✓ Budget Planning</span>
+                <span>✓ Optimisation Tips</span>
+            </div>
+        </section>
+
+        <section class="hero-visual">
+            <div class="cloud-symbol">☁</div>
+
+            <div class="visual-card">
+                <p>Estimated Monthly Cost</p>
+                <h2>₹5,500</h2>
+
+                <div class="visual-line"></div>
+
+                <div class="visual-stats">
+                    <span>Compute</span>
+                    <strong>₹4,000</strong>
+                </div>
+
+                <div class="visual-stats">
+                    <span>Storage</span>
+                    <strong>₹1,000</strong>
+                </div>
+
+                <div class="visual-stats">
+                    <span>Network</span>
+                    <strong>₹500</strong>
+                </div>
+
+                <small>Illustrative sample data</small>
+            </div>
+        </section>
+    </main>
+
+    <footer class="welcome-footer">
+        MCA Mini Project | Cloud Cost Monitoring and Optimisation System
+    </footer>
+
+</body>
+</html>

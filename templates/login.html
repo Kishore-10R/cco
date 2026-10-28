@@ -1,0 +1,60 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Cloud Cost Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+
+    <a class="back-home" href="/">← Back to Home</a>
+
+    <main class="login-card">
+        <div class="login-icon">☁</div>
+
+        <h1>Welcome Back!</h1>
+        <p class="muted">Sign in to access your cost dashboard.</p>
+
+        {% with messages = get_flashed_messages() %}
+            {% for message in messages %}
+                <div class="alert">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST" action="/login">
+            <label for="username">Username</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="Enter username"
+                required
+            >
+
+            <label for="password">Password</label>
+            <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter password"
+                required
+            >
+
+            <button type="submit" class="primary-btn full-btn">
+                Sign In →
+            </button>
+        </form>
+
+        <div class="demo-info">
+            <strong>Demo Login Details</strong>
+            <p>Username: <code>admin</code></p>
+            <p>Password: <code>cloud123</code></p>
+        </div>
+
+        <p class="footer-note">Cloud Cost Monitoring Student Project</p>
+    </main>
+
+</body>
+</html>

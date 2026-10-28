@@ -1,0 +1,443 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Cost Monitoring and Optimisation System</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: linear-gradient(135deg, #123c69, #2563eb);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 15px;
+            color: #dbeafe;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 30px auto;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+            border-top: 4px solid #2563eb;
+        }
+
+        .card h3 {
+            color: #64748b;
+            font-size: 15px;
+            margin-bottom: 14px;
+        }
+
+        .amount {
+            font-size: 27px;
+            font-weight: bold;
+            color: #123c69;
+            overflow-wrap: anywhere;
+        }
+
+        .status {
+            color: #15803d;
+            font-size: 19px;
+            font-weight: bold;
+        }
+
+        .alert {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .calculator {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+        }
+
+        .calculator h2 {
+            color: #123c69;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: #64748b;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 9px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 16px;
+        }
+
+        input:focus {
+            outline: 2px solid #93c5fd;
+            border-color: #2563eb;
+        }
+
+        button {
+            margin-top: 25px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 14px 22px;
+            border-radius: 7px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .note {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .tool-section {
+            margin-top: 24px;
+            padding: 24px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+        }
+
+        .tool-section h2 { margin-bottom: 16px; color: #123c69; }
+        .tool-row { display: flex; align-items: end; flex-wrap: wrap; gap: 14px; }
+        .tool-row > div { flex: 1 1 180px; }
+        .tool-row button, .action-link {
+            margin-top: 0;
+            display: inline-block;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .reset-button { background: #475569 !important; }
+        .warning { padding: 14px 16px; margin-bottom: 20px; border-left: 4px solid #dc2626; background: #fee2e2; color: #991b1b; }
+        .chart-wrap { max-width: 430px; margin: 0 auto; }
+        .history-table { width: 100%; border-collapse: collapse; }
+        .history-table th, .history-table td { padding: 11px 9px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        .history-table th { color: #64748b; font-size: 13px; }
+        .table-scroll { overflow-x: auto; }
+        .comparison-result { margin-top: 18px; line-height: 1.8; }
+        .difference { font-weight: bold; color: #123c69; }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        @media (max-width: 700px) {
+            .summary,
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 22px;
+            }
+
+            .container {
+                width: 94%;
+            }
+
+            .calculator {
+                padding: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Cloud Cost Monitoring and Optimisation System</h1>
+        <p>Monitor, calculate and manage your estimated cloud expenses</p>
+    </header>
+
+    <main class="container">
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if over_budget %}
+            <div class="warning" role="alert">
+                Budget warning: estimated costs of ₹{{ "%.2f"|format(monthly) }} exceed your monthly budget of ₹{{ "%.2f"|format(budget) }}.
+            </div>
+        {% endif %}
+
+        <section class="summary">
+
+            <div class="card">
+                <h3>Monthly Cloud Cost</h3>
+                <div class="amount">
+                    ₹{{ "%.2f"|format(monthly) }}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Yearly Estimated Cost</h3>
+                <div class="amount">
+                    ₹{{ "%.2f"|format(yearly) }}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Cost Status</h3>
+                <div class="status">{{ status }}</div>
+            </div>
+
+        </section>
+
+        <section class="calculator">
+
+            <h2>Cloud Cost Calculator</h2>
+
+            <p class="description">
+                Enter the estimated monthly cost of your cloud resources
+                to calculate your total monthly and yearly expenses.
+            </p>
+
+            <form action="/" method="POST">
+
+                <div class="form-grid" style="margin-bottom: 20px;">
+                    <div>
+                        <label for="month">Estimate month</label>
+                        <input type="month" id="month" name="month" value="{{ estimate_month }}" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+
+                    <div>
+                        <label for="compute">Compute Cost (₹)</label>
+                        <input
+                            type="number"
+                            id="compute"
+                            name="compute"
+                            min="0"
+                            max="1000000000"
+                            step="0.01"
+                            value="{{ compute }}"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label for="storage">Storage Cost (₹)</label>
+                        <input
+                            type="number"
+                            id="storage"
+                            name="storage"
+                            min="0"
+                            max="1000000000"
+                            step="0.01"
+                            value="{{ storage }}"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label for="network">Network Cost (₹)</label>
+                        <input
+                            type="number"
+                            id="network"
+                            name="network"
+                            min="0"
+                            max="1000000000"
+                            step="0.01"
+                            value="{{ network }}"
+                            required
+                        >
+                    </div>
+
+                </div>
+
+                <button type="submit">Calculate Cloud Cost</button>
+                <button class="reset-button" type="button" id="reset-calculator">Reset Calculator</button>
+
+            </form>
+
+            <p class="note">
+                Note: This project calculates estimated costs using the values
+                entered by the user. It does not fetch live billing data from AWS.
+            </p>
+
+        </section>
+
+        <section class="tool-section">
+            <h2>Monthly Budget</h2>
+            <form action="/budget" method="POST" class="tool-row">
+                <div>
+                    <label for="budget">Budget limit (₹)</label>
+                    <input type="number" id="budget" name="budget" min="0" max="1000000000" step="0.01" value="{{ budget if budget is not none else '' }}" placeholder="No budget set">
+                </div>
+                <button type="submit">Save Budget</button>
+            </form>
+        </section>
+
+        <section class="tool-section">
+            <h2>Cost Breakdown</h2>
+            <div class="chart-wrap"><canvas id="cost-chart" data-costs='{{ [compute, storage, network]|tojson }}' aria-label="Compute, storage, and network cost breakdown"></canvas></div>
+        </section>
+
+        <section class="tool-section">
+            <h2>Compare Months</h2>
+            {% if months %}
+                <form action="/" method="GET" class="tool-row">
+                    <div>
+                        <label for="month-a">First month</label>
+                        <select id="month-a" name="month_a" required>
+                            {% for month in months %}<option value="{{ month }}" {% if month == first_month %}selected{% endif %}>{{ month }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="month-b">Second month</label>
+                        <select id="month-b" name="month_b" required>
+                            {% for month in months %}<option value="{{ month }}" {% if month == second_month %}selected{% endif %}>{{ month }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit">Compare Costs</button>
+                </form>
+                {% if comparison %}
+                    {% if comparison[0] and comparison[1] %}
+                        <div class="comparison-result">
+                            <strong>{{ comparison[0]['month'] }}</strong>: ₹{{ "%.2f"|format(comparison[0]['monthly']) }}<br>
+                            <strong>{{ comparison[1]['month'] }}</strong>: ₹{{ "%.2f"|format(comparison[1]['monthly']) }}<br>
+                            <span class="difference">Difference: ₹{{ "%.2f"|format((comparison[1]['monthly'] - comparison[0]['monthly'])|abs) }}
+                            {% if comparison[1]['monthly'] > comparison[0]['monthly'] %}higher{% elif comparison[1]['monthly'] < comparison[0]['monthly'] %}lower{% else %}unchanged{% endif %}</span>
+                        </div>
+                    {% else %}
+                        <p class="note">A saved estimate is needed for each selected month.</p>
+                    {% endif %}
+                {% endif %}
+            {% else %}
+                <p class="note">Save estimates for at least one month to compare costs.</p>
+            {% endif %}
+        </section>
+
+        <section class="tool-section">
+            <h2>Cost History</h2>
+            {% if history %}
+                <div class="table-scroll">
+                    <table class="history-table">
+                        <thead><tr><th>Month</th><th>Saved</th><th>Compute</th><th>Storage</th><th>Network</th><th>Total</th><th>Report</th></tr></thead>
+                        <tbody>
+                            {% for record in history %}
+                                <tr>
+                                    <td>{{ record['month'] }}</td><td>{{ record['created_at'] }}</td>
+                                    <td>₹{{ "%.2f"|format(record['compute']) }}</td><td>₹{{ "%.2f"|format(record['storage']) }}</td>
+                                    <td>₹{{ "%.2f"|format(record['network']) }}</td><td>₹{{ "%.2f"|format(record['monthly']) }}</td>
+                                    <td><a href="{{ url_for('download_report', record_id=record['id']) }}">Download PDF</a></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="note">Calculated estimates will appear here.</p>
+            {% endif %}
+        </section>
+
+    </main>
+
+    <footer>
+        MCA Project | Cloud Cost Monitoring and Optimisation System
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const chartCanvas = document.getElementById("cost-chart");
+        if (chartCanvas && window.Chart) {
+            new Chart(chartCanvas, {
+                type: "pie",
+                data: {
+                    labels: ["Compute", "Storage", "Network"],
+                    datasets: [{
+                        data: JSON.parse(chartCanvas.dataset.costs),
+                        backgroundColor: ["#2563eb", "#16a34a", "#f59e0b"],
+                        borderColor: "#ffffff",
+                        borderWidth: 3
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+            });
+        }
+
+        document.getElementById("reset-calculator").addEventListener("click", () => {
+            ["compute", "storage", "network", "month"].forEach((id) => {
+                document.getElementById(id).value = "";
+            });
+        });
+    </script>
+
+</body>
+</html>
