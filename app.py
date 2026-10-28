@@ -1,292 +1,186 @@
 
-from flask import Flask, render_template_string, request
+import io
+import os
+import re
+import sqlite3
+from contextlib import contextmanager
+from datetime import date
+
+from flask import Flask, render_template, request, flash, redirect, url_for, make_response
 
 app = Flask(__name__)
+app.secret_key = "cloud-cost-project-key"
+DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloud_costs.db")
 
-HTML_PAGE = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Cloud Cost Monitoring and Optimisation</title>
+@contextmanager
+def get_db():
+    connection = sqlite3.connect(DATABASE)
+    connection.row_factory = sqlite3.Row
+    try:
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
 
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            background: #f1f5f9;
-            color: #1e293b;
-        }
+def init_db():
+    with get_db() as connection:
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS cost_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                month TEXT NOT NULL,
+                compute REAL NOT NULL,
+                storage REAL NOT NULL,
+                network REAL NOT NULL,
+                monthly REAL NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                monthly_budget REAL
+            )
+        """)
+        connection.execute("INSERT OR IGNORE INTO settings (id, monthly_budget) VALUES (1, NULL)")
 
-        header {
-            background: #123c69;
-            color: white;
-            text-align: center;
-            padding: 30px 15px;
-        }
 
-        header h1 {
-            margin: 0 0 10px;
-        }
+def get_budget():
+    with get_db() as connection:
+        row = connection.execute("SELECT monthly_budget FROM settings WHERE id = 1").fetchone()
+    return row["monthly_budget"] if row else None
 
-        .container {
-            max-width: 1000px;
-            margin: 30px auto;
-            padding: 0 20px;
-        }
 
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(
-                auto-fit, minmax(200px, 1fr)
-            );
-            gap: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 3px 10px #00000010;
-        }
-
-        .card h3 {
-            color: #64748b;
-            font-size: 16px;
-        }
-
-        .amount {
-            font-size: 27px;
-            font-weight: bold;
-            color: #087f5b;
-        }
-
-        .form-box {
-            background: white;
-            padding: 25px;
-            margin-top: 25px;
-            border-radius: 12px;
-            box-shadow: 0 3px 10px #00000010;
-        }
-
-        label {
-            display: block;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            margin-top: 8px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-        }
-
-        button {
-            width: 100%;
-            padding: 13px;
-            margin-top: 22px;
-            background: #123c69;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #1d568e;
-        }
-
-        .result {
-            background: #e0f2fe;
-            border-left: 5px solid #0284c7;
-            padding: 18px;
-            margin-top: 22px;
-            border-radius: 6px;
-        }
-
-        .status {
-            font-weight: bold;
-        }
-
-        footer {
-            text-align: center;
-            padding: 25px;
-            color: #64748b;
-        }
-    </style>
-</head>
-
-<body>
-    <header>
-        <h1>Cloud Cost Monitoring and Optimisation System</h1>
-        <p>Monitor cloud expenses and find ways to reduce costs</p>
-    </header>
-
-    <div class="container">
-
-        <div class="cards">
-            <div class="card">
-                <h3>Monthly Cloud Cost</h3>
-                <div class="amount">₹{{ monthly_cost }}</div>
-            </div>
-
-            <div class="card">
-                <h3>Yearly Estimated Cost</h3>
-                <div class="amount">₹{{ yearly_cost }}</div>
-            </div>
-
-            <div class="card">
-                <h3>Cost Status</h3>
-                <div class="amount status"
-                     style="font-size: 22px;">
-                    {{ status }}
-                </div>
-            </div>
-        </div>
-
-        <div class="form-box">
-            <h2>Cloud Cost Calculator</h2>
-
-            <p>
-                Enter the estimated monthly cost of your
-                cloud services below.
-            </p>
-
-            <form method="POST">
-                <label for="compute">Compute Cost (₹)</label>
-                <input
-                    type="number"
-                    id="compute"
-                    name="compute"
-                    min="0"
-                    step="0.01"
-                    value="{{ compute }}"
-                    required
-                >
-
-                <label for="storage">Storage Cost (₹)</label>
-                <input
-                    type="number"
-                    id="storage"
-                    name="storage"
-                    min="0"
-                    step="0.01"
-                    value="{{ storage }}"
-                    required
-                >
-
-                <label for="network">Network Cost (₹)</label>
-                <input
-                    type="number"
-                    id="network"
-                    name="network"
-                    min="0"
-                    step="0.01"
-                    value="{{ network }}"
-                    required
-                >
-
-                <button type="submit">
-                    Calculate Cloud Cost
-                </button>
-            </form>
-
-            {% if calculated %}
-            <div class="result">
-                <h3>Cost Analysis</h3>
-
-                <p>
-                    Monthly Cost:
-                    <strong>₹{{ monthly_cost }}</strong>
-                </p>
-
-                <p>
-                    Yearly Cost:
-                    <strong>₹{{ yearly_cost }}</strong>
-                </p>
-
-                <p>
-                    Status:
-                    <strong>{{ status }}</strong>
-                </p>
-
-                <p>
-                    <strong>Optimization Recommendation:</strong>
-                    {{ recommendation }}
-                </p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <footer>
-        MCA Cloud Computing Project |
-        Cloud Cost Monitoring and Optimisation System
-    </footer>
-</body>
-</html>
-"""
+init_db()
 
 
 @app.route("/", methods=["GET", "POST"])
-def home():
-    compute = 0.0
-    storage = 0.0
-    network = 0.0
-    calculated = False
+def dashboard():
+    compute, storage, network = 4000.0, 1000.0, 500.0
+    monthly = compute + storage + network
+    yearly = monthly * 12
+    status = "Cost Under Control"
+    current_month = date.today().strftime("%Y-%m")
+    estimate_month = request.form.get("month", current_month)
 
     if request.method == "POST":
-        compute = float(request.form.get("compute", 0))
-        storage = float(request.form.get("storage", 0))
-        network = float(request.form.get("network", 0))
-        calculated = True
+        try:
+            compute = float(request.form.get("compute", 0))
+            storage = float(request.form.get("storage", 0))
+            network = float(request.form.get("network", 0))
+            if any(value < 0 or value > 1000000000 for value in (compute, storage, network)):
+                raise ValueError
+            if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", estimate_month):
+                raise ValueError
 
-    monthly_cost = compute + storage + network
-    yearly_cost = monthly_cost * 12
+            monthly = compute + storage + network
+            yearly = monthly * 12
+            with get_db() as connection:
+                connection.execute(
+                    """INSERT INTO cost_history (month, compute, storage, network, monthly)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (estimate_month, compute, storage, network, monthly),
+                )
+        except (ValueError, TypeError):
+            flash("Enter valid non-negative costs and select a valid month.")
+            compute, storage, network = 4000.0, 1000.0, 500.0
+            monthly = compute + storage + network
+            yearly = monthly * 12
 
-    if monthly_cost > 10000:
-        status = "High Cost"
-        recommendation = (
-            "Review unused cloud resources, reduce "
-            "unnecessary storage, and check cheaper "
-            "service options."
-        )
-    elif monthly_cost > 5000:
-        status = "Moderate Cost"
-        recommendation = (
-            "Review resource usage and consider "
-            "scheduling non-production resources "
-            "when they are not needed."
-        )
-    else:
-        status = "Cost Under Control"
-        recommendation = (
-            "Continue monitoring costs and remove "
-            "resources that are no longer required."
-        )
+    budget = get_budget()
+    over_budget = budget is not None and monthly > budget
+    if over_budget:
+        status = "Over Monthly Budget"
+    elif monthly > 10000:
+        status = "High Cost Alert"
 
-    return render_template_string(
-        HTML_PAGE,
-        compute=compute,
-        storage=storage,
-        network=network,
-        monthly_cost=round(monthly_cost, 2),
-        yearly_cost=round(yearly_cost, 2),
-        status=status,
-        recommendation=recommendation,
-        calculated=calculated
+    with get_db() as connection:
+        history = connection.execute(
+            "SELECT * FROM cost_history ORDER BY created_at DESC, id DESC LIMIT 20"
+        ).fetchall()
+        months = [row["month"] for row in connection.execute(
+            "SELECT DISTINCT month FROM cost_history ORDER BY month DESC"
+        ).fetchall()]
+        first_month, second_month = request.args.get("month_a", ""), request.args.get("month_b", "")
+        comparison = None
+        if first_month and second_month:
+            comparison = [connection.execute(
+                "SELECT * FROM cost_history WHERE month = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+                (selected_month,),
+            ).fetchone() for selected_month in (first_month, second_month)]
+
+    return render_template(
+        "dashboard.html", compute=compute, storage=storage, network=network,
+        monthly=monthly, yearly=yearly, status=status, budget=budget,
+        over_budget=over_budget, estimate_month=estimate_month, history=history,
+        months=months, first_month=first_month, second_month=second_month,
+        comparison=comparison,
     )
 
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+@app.route("/budget", methods=["POST"])
+def set_budget():
+    raw_budget = request.form.get("budget", "").strip()
+    try:
+        budget = float(raw_budget) if raw_budget else None
+        if budget is not None and (budget < 0 or budget > 1000000000):
+            raise ValueError
+        with get_db() as connection:
+            connection.execute("UPDATE settings SET monthly_budget = ? WHERE id = 1", (budget,))
+    except (ValueError, TypeError):
+        flash("Enter a valid budget between ₹0 and ₹1,000,000,000.")
+    return redirect(url_for("dashboard"))
 
+
+@app.route("/report/<int:record_id>.pdf")
+def download_report(record_id):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    with get_db() as connection:
+        record = connection.execute(
+            "SELECT * FROM cost_history WHERE id = ?", (record_id,)
+        ).fetchone()
+    if record is None:
+        return "Cost report not found", 404
+
+    output = io.BytesIO()
+    document = SimpleDocTemplate(output, pagesize=A4, rightMargin=20 * mm, leftMargin=20 * mm)
+    styles = getSampleStyleSheet()
+    rows = [
+        ["Cost category", "Estimated monthly cost"],
+        ["Compute", f"₹{record['compute']:,.2f}"],
+        ["Storage", f"₹{record['storage']:,.2f}"],
+        ["Network", f"₹{record['network']:,.2f}"],
+        ["Total", f"₹{record['monthly']:,.2f}"],
+    ]
+    table = Table(rows, colWidths=[90 * mm, 75 * mm])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#123c69")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#e8f0f8")),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+        ("PADDING", (0, 0), (-1, -1), 9),
+    ]))
+    document.build([
+        Paragraph("Cloud Cost Summary", styles["Title"]), Spacer(1, 8 * mm),
+        Paragraph(f"Estimate month: {record['month']}", styles["Normal"]),
+        Paragraph(f"Saved: {record['created_at']}", styles["Normal"]),
+        Spacer(1, 6 * mm), table,
+    ])
+    response = make_response(output.getvalue())
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f"attachment; filename=cloud-cost-{record['month']}.pdf"
+    return response
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
